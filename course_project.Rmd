@@ -1,0 +1,14 @@
+---
+title: "Coursera Practical Machine Learning Course Project"
+author: "jcollingosch"
+date: "February 18, 2015"
+output: html_document
+---
+
+```{r}
+# load train and test datasets from url below
+train_url <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+test_url <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+train_df <- read.csv(train_url,stringAsFactors=FALSE)
+test_df <- read.csv(test_url,stringAsFactors=FALSE)
+```
