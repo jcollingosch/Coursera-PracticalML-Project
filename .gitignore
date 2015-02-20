@@ -1,2 +1,4 @@
 results/
+course_project_cache/
+course_project_files/
 *.Rdata

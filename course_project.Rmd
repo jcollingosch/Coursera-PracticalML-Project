@@ -5,4 +5,74 @@ date: "February 18, 2015"
 output: html_document
 ---
 
-# Hello World!
+## Predicting Mistakes During Excercise
+In this project we use data from the [Human Activity Recognintion (HAR)](http://groupware.les.inf.puc-rio.br/har) in order to predict mistakes during excercise. The authors note that much research has been done analyzing *which* excersise is being done but not many touch on the question of *how* it's being done. 
+
+First, we must obtain our dataset. Below we have two datasets, one for training our predictive model, the other for testing the output. I will use the cross validation on the training set to both tune any meta perameters needed while building the models and also to get an estimate of generalization error. The test set in this case is very small (20 rows) and will only be used for our class grading of model output (for more info see [Coursera Class](https://class.coursera.org/predmachlearn-011))
+```{r, warning=F, cache=TRUE, message=FALSE}
+# load weight lifting excercise data from url
+train_url <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+test_url <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+train_df <- read.csv(train_url,
+                     stringsAsFactors=FALSE,
+                     na.strings=c("NA","","#DIV/0!"))
+test_df <- read.csv(test_url,
+                    stringsAsFactors=FALSE,
+                    na.strings=c("NA","","#DIV/0!"))
+```
+Next, we should do a bit up clean up and get our data ready for modeling. The training data is 19,622 X 160, but as we will see below many of the variables provided are mostly not useful. Below I decided to only include variables as candidate predictors if they are at least 10% non-missing. 
+```{r, warning=FALSE, message=FALSE}
+# collect non predictor variable names, "classe" is our response
+leave_out <- c("X",
+               "user_name",
+               "raw_timestamp_part_1",
+               "raw_timestamp_part_2",
+               "cvtd_timestamp",
+               "new_window",
+               "num_window",
+               "classe")
+
+# find proportion of missingness for each variable
+prop_missing <- sapply(train_df, function(x) mean(is.na(x)))
+na_names <- names(prop_missing)[prop_missing > 0.9]
+
+# only keep those predictors with <= 90% missing
+predictors <- names(train_df)[!names(train_df) %in% c(leave_out, na_names)]
+
+cat("Candidate Predictors:",length(predictors))
+```
+Finally, we build our model to predict the "classe" of excercise. I use the `caret` package in R to train the model. I will run **5-fold cross validation** in order to find the best parameter for the model, *mtry*, or number of variables investigated at each split. I will also use the results of the cross validation output to estimate the generalization error/accuracy for the model.  
+
+```{r, warning=F,  message=FALSE}
+library("caret")
+library("doParallel")
+```
+```{r, warning=F, message=FALSE, cache=TRUE}
+# register parallel backend
+registerDoParallel(makeCluster(4))
+
+set.seed(123)
+fitControl <- trainControl(method = "cv", number = 5)
+
+fit <- train(y = factor(train_df$classe),
+             x = train_df[predictors],
+             method = "rf",
+             trControl = fitControl,
+             ntree = 1000)
+```
+
+We can plot the estimated model accuracy accross different values of the tuning paramters by running `plot(fit)`.
+
+```{r}
+plot(fit)
+```
+Here we see that of the values that we investigated for *mtry*, the best choice with the highest cross valitated accuracy is 2. 
+
+```{r}
+# see full summary of model output
+fit
+
+# estimate of out of sample error
+error <- 1 - fit$results[1,2]
+```
+Above we see that for a model with *mtry* = 2 our estimate of out of sample error estimate of `r round(error*100,2)`%
